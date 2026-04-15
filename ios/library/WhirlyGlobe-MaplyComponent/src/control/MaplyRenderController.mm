@@ -1521,7 +1521,7 @@ using namespace Eigen;
         Eigen::Matrix4d mvp = (inMvp * (scaleTrans * transTrans) ).matrix();
 
         theMapView->assignMatrix(mvp);
-        theMapView->assignScreenSizeInDisplayCoords(3.1414/pow(2.0,zoom));
+//        theMapView->assignScreenSizeInDisplayCoords(3.1414/pow(2.0,zoom));
         theMapView->setUserMotion(isMoving);
         theMapView->setHasMoved(hasMoved);
         theMapView->setIsZooming(isZooming);
