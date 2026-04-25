@@ -20,6 +20,7 @@
 
 #import "MaplyAnnotation_private.h"
 #import "WhirlyGlobeLib.h"
+#import "LiquidGlassCalloutBackgroundView.h"
 
 @implementation MaplyAnnotation
 
@@ -107,6 +108,14 @@
 - (void)setLoc:(MaplyCoordinate)newLoc
 {
     _loc = newLoc;
+}
+
+- (void)setLiquidGlassStyle:(bool)liquidGlassStyle
+{
+    _liquidGlassStyle = liquidGlassStyle;
+    if (liquidGlassStyle) {
+        _calloutView.backgroundView = [[LiquidGlassCalloutBackgroundView alloc] init];
+    }
 }
 
 @end

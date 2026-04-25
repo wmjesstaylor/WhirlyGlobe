@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		2172DFDA81FB4E5B50E8F3C6 /* LiquidGlassCalloutBackgroundView.mm in Sources */ = {isa = PBXBuildFile; fileRef = D79A1E01DF8CB8DE1F22C5EB /* LiquidGlassCalloutBackgroundView.mm */; };
 		2B0387F22069BC2E00DD5C40 /* QuadDisplayLayerNew.h in Headers */ = {isa = PBXBuildFile; fileRef = 2B0387F12069BC2E00DD5C40 /* QuadDisplayLayerNew.h */; };
 		2B0387F8206ABD7B00DD5C40 /* MaplyQuadSampler.h in Headers */ = {isa = PBXBuildFile; fileRef = 2B0387F7206ABD7B00DD5C40 /* MaplyQuadSampler.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		2B092BB42373574E00E27CD8 /* MaplyGlobeRenderController_private.h in Headers */ = {isa = PBXBuildFile; fileRef = 2B092BB32373574E00E27CD8 /* MaplyGlobeRenderController_private.h */; };
@@ -2579,6 +2580,8 @@
 		C4905728265AB9E3001E4A98 /* bucketalloc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = bucketalloc.cpp; sourceTree = "<group>"; };
 		C4905729265AB9E3001E4A98 /* bucketalloc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = bucketalloc.h; sourceTree = "<group>"; };
 		C490572C265ABAB8001E4A98 /* glues.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = glues.h; path = ../../include/glues.h; sourceTree = "<group>"; };
+		D79A1E01DF8CB8DE1F22C5EB /* LiquidGlassCalloutBackgroundView.mm */ = {isa = PBXFileReference; includeInIndex = 1; path = ../../../common/local_libs/SMCalloutView/LiquidGlassCalloutBackgroundView.mm; sourceTree = "<group>"; };
+		DF9A170733C1537B8FFEF549 /* LiquidGlassCalloutBackgroundView.h */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.c.h; path = ../../../common/local_libs/SMCalloutView/LiquidGlassCalloutBackgroundView.h; sourceTree = "<group>"; };
 		E56DB3D41D6B1B17007000D2 /* SLDStyleSet.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SLDStyleSet.h; sourceTree = "<group>"; };
 		E56DB3D71D6B1B5A007000D2 /* SLDStyleSet.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = SLDStyleSet.mm; sourceTree = "<group>"; };
 		E56E02A61E11F99500C1DD85 /* GeoJSONSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = GeoJSONSource.h; sourceTree = "<group>"; };
@@ -4347,6 +4350,8 @@
 			children = (
 				2BE53AB21D249CAF00B60FAD /* SMCalloutView.h */,
 				2BE53AB31D249CAF00B60FAD /* SMCalloutView.mm */,
+				DF9A170733C1537B8FFEF549 /* LiquidGlassCalloutBackgroundView.h */,
+				D79A1E01DF8CB8DE1F22C5EB /* LiquidGlassCalloutBackgroundView.mm */,
 			);
 			name = SMCalloutView;
 			sourceTree = "<group>";
@@ -6066,6 +6071,7 @@
 				2B8A78A022864901008B0A1F /* MarkerManager.cpp in Sources */,
 				2B82B6751E82E24A0095FB14 /* PJ_imw_p.c in Sources */,
 				2B82B6C81E82E24A0095FB14 /* proj_rouss.c in Sources */,
+				2172DFDA81FB4E5B50E8F3C6 /* LiquidGlassCalloutBackgroundView.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

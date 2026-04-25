@@ -68,4 +68,10 @@
 /// If the annotation would be off screen we would normally reposition the globe or map to make it visible.  If this is et to false, we won't.
 @property (nonatomic) bool repositionForVisibility;
 
+/// When YES, the underlying SMCalloutView is configured with a translucent
+/// system-material background (blur + subtle stroke) instead of the default
+/// opaque white callout. The arrow/caret is preserved so the popup still
+/// points at the marker. Set this *before* calling addAnnotation:.
+@property (nonatomic) bool liquidGlassStyle;
+
 @end
