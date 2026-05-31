@@ -6617,7 +6617,7 @@
 			};
 			name = Release;
 		};
-		C8C2A8B32FCA53EB004C3531 /* Release-DebugTools */ = {
+		C8C2A8B32FCA53EB004C3531 /* Release-Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
@@ -6676,9 +6676,9 @@
 				VERSIONING_SYSTEM = "apple-generic";
 				VERSION_INFO_PREFIX = "";
 			};
-			name = "Release-DebugTools";
+			name = "Release-Staging";
 		};
-		C8C2A8B42FCA53EB004C3531 /* Release-DebugTools */ = {
+		C8C2A8B42FCA53EB004C3531 /* Release-Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6731,9 +6731,9 @@
 				SUPPORTS_MACCATALYST = YES;
 				TARGETED_DEVICE_FAMILY = "1,2,7";
 			};
-			name = "Release-DebugTools";
+			name = "Release-Staging";
 		};
-		C8C2A8B52FCA53EB004C3531 /* Release-DebugTools */ = {
+		C8C2A8B52FCA53EB004C3531 /* Release-Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "";
@@ -6797,9 +6797,9 @@
 					"-Wprotocol",
 				);
 			};
-			name = "Release-DebugTools";
+			name = "Release-Staging";
 		};
-		C8C2A8B62FCA53EB004C3531 /* Release-DebugTools */ = {
+		C8C2A8B62FCA53EB004C3531 /* Release-Staging */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
@@ -6809,7 +6809,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.mousebirdconsulting.WhirlyGlobeMaplyComponentTests;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
-			name = "Release-DebugTools";
+			name = "Release-Staging";
 		};
 /* End XCBuildConfiguration section */
 
@@ -6819,7 +6819,7 @@
 			buildConfigurations = (
 				2BE537111D2499E500B60FAD /* Debug */,
 				2BE537121D2499E500B60FAD /* Release */,
-				C8C2A8B32FCA53EB004C3531 /* Release-DebugTools */,
+				C8C2A8B32FCA53EB004C3531 /* Release-Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -6829,7 +6829,7 @@
 			buildConfigurations = (
 				2BE537141D2499E500B60FAD /* Debug */,
 				2BE537151D2499E500B60FAD /* Release */,
-				C8C2A8B42FCA53EB004C3531 /* Release-DebugTools */,
+				C8C2A8B42FCA53EB004C3531 /* Release-Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -6839,7 +6839,7 @@
 			buildConfigurations = (
 				2BE537171D2499E500B60FAD /* Debug */,
 				2BE537181D2499E500B60FAD /* Release */,
-				C8C2A8B62FCA53EB004C3531 /* Release-DebugTools */,
+				C8C2A8B62FCA53EB004C3531 /* Release-Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -6849,7 +6849,7 @@
 			buildConfigurations = (
 				310573E82863C72D00B50828 /* Debug */,
 				310573E92863C72D00B50828 /* Release */,
-				C8C2A8B52FCA53EB004C3531 /* Release-DebugTools */,
+				C8C2A8B52FCA53EB004C3531 /* Release-Staging */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
