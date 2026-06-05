@@ -254,10 +254,31 @@ static inline bool dictBool(const NSDictionary *dict, const NSString *key, bool 
     const auto __strong thread = layerThread;
     if (isShuttingDown || (!thread && !offlineMode))
         return;
-    
+
     if ([NSThread currentThread] != thread)
     {
-        [self performSelector:@selector(lockingShutdown) onThread:thread withObject:nil waitUntilDone:YES];
+        // [Epicenter] If the layer thread has already exited (common
+        // when dealloc fires after the controller's teardown has
+        // already brought the thread down), performSelector:onThread:
+        // throws NSDestinationInvalidException because the target
+        // thread is gone. Fall through to a direct teardown on the
+        // current thread instead — at this point there are no
+        // concurrent workers (they live on the layer thread which is
+        // dead), so the lock/wait dance in the active branch below
+        // isn't needed. @try/@catch around the perform handles the
+        // race where the thread exits between the isFinished check
+        // and the dispatch.
+        // Crashlytics issue 6e76c366501cef35f27bef0a3131a50a — 2 crashes
+        // / 1 user in Epicenter 1.9.14 build 5.
+        if (thread.isFinished || thread.isCancelled) {
+            [self teardown];
+            return;
+        }
+        @try {
+            [self performSelector:@selector(lockingShutdown) onThread:thread withObject:nil waitUntilDone:YES];
+        } @catch (NSException *e) {
+            [self teardown];
+        }
         return;
     }
 
