@@ -540,12 +540,21 @@ void BasicDrawableInstanceMTL::encodeDirect(RendererFrameInfoMTL *frameInfo,int 
     BasicDrawableMTL *basicDrawMTL = dynamic_cast<BasicDrawableMTL *>(basicDraw.get());
     ProgramMTL *program = (ProgramMTL *)frameInfo->program;
     RenderTargetMTL *renderTarget = frameInfo->renderTarget;
+    // [Epicenter] Null-check basicDrawMTL BEFORE dereferencing it.
+    // Upstream had the !basicDrawMTL guard positioned AFTER the
+    // basicDrawMTL->setupForMTL deref, so when basicDraw.get()
+    // returned nullptr (base drawable freed mid-render while this
+    // instance was still in the render queue) the deref crashed
+    // instead of falling through the intended early-return. Pairs
+    // the order in enumerateResources() above which already does
+    // it correctly. Crashlytics issue fd61d4707d226768ce190a6e0574ffc4
+    // — 21 crashes / 5 users in 1.9.14.
+    if (!basicDrawMTL)
+        return;
     if (!basicDrawMTL->setupForMTL) {
         NSLog(@"BasicDrawableInstance pointing at a bad BasicDrawable");
         return;
     }
-    if (!basicDrawMTL)
-        return;
 
     // Used if we're getting our instance from another drawable
     BasicDrawableMTL *instDrawMTL = dynamic_cast<BasicDrawableMTL *>(instDraw.get());
