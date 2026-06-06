@@ -64,18 +64,37 @@ void BasicDrawableInstance::setInstMaster(BasicDrawableRef newInstMaster)
     
 Mbr BasicDrawableInstance::getLocalMbr() const
 {
+    // Defensive: base drawable can be freed independently of this
+    // instance (see BasicDrawableInstance.h declaration of basicDraw
+    // as std::shared_ptr; nothing in WG guarantees the base outlives
+    // its instances). Same pattern as f8bdec144 (BasicDrawableInstanceMTL
+    // encodeDirect) but in the cross-platform base class. Empty Mbr
+    // means the instance won't be drawn — correct behavior for an
+    // orphaned instance pending its own cleanup.
+    if (!basicDraw) return Mbr();
     return basicDraw->getLocalMbr();
 }
 
 int64_t BasicDrawableInstance::getDrawOrder() const
 {
-    return hasDrawOrder ? drawOrder : basicDraw->getDrawOrder();
+    if (hasDrawOrder) return drawOrder;
+    // Defensive: base drawable can be freed before this instance.
+    // PrioritySorter in SceneRenderer.h std::set<DrawableRef,PrioritySorter>
+    // calls this on every set lookup; one orphaned instance crashes
+    // the whole removeDrawable path. Returning 0 sorts to front, but
+    // the orphan won't render (see getLocalMbr) and will be cleaned
+    // up on the next scene-change cycle.
+    if (!basicDraw) return 0;
+    return basicDraw->getDrawOrder();
 }
 
 unsigned int BasicDrawableInstance::getDrawPriority() const
 {
     if (hasDrawPriority)
         return drawPriority;
+    // Same defensive pattern as getDrawOrder above; called from the
+    // same PrioritySorter when draw orders tie.
+    if (!basicDraw) return 0;
     return basicDraw->getDrawPriority();
 }
     
