@@ -289,12 +289,18 @@ void RenderTeardownInfoMTL::destroyDrawable(SceneRenderer *renderer,const Drawab
 }
 
 
-const bool HeapManagerMTL::UseHeaps =
-#if TARGET_OS_SIMULATOR || TARGET_OS_MACCATALYST
-    false;
-#else
-    true;
-#endif
+// Epicenter fork 2026-06-13: was `true` on device. Metal heaps never shrink —
+// HeapManagerMTL only ever allocates new heaps (findHeap) and refreshes
+// available size (updateHeaps); there is no release path. So footprint stayed
+// pinned at the peak high-water mark: viewing the continental US materialized
+// ~112k fault strands (~2 GB of heap), and culling / de-mat returned the
+// buffers to the heaps but NEVER to the OS — zooming into a tiny region still
+// showed ~1.6 GB. Switching to individual buffers (the path already used on
+// Simulator/Catalyst, and the `else` branch in allocateBuffer) frees straight
+// to the OS on drawable teardown, so culling/de-mat actually reclaim memory.
+// Trade: more per-buffer alloc overhead vs heap sub-allocation. BACK OUT by
+// restoring `true` here if alloc throughput / fragmentation regresses.
+const bool HeapManagerMTL::UseHeaps = false;
 
 HeapManagerMTL::HeapManagerMTL(id<MTLDevice> mtlDevice)
 : mtlDevice(mtlDevice)
