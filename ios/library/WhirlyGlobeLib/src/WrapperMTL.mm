@@ -289,18 +289,20 @@ void RenderTeardownInfoMTL::destroyDrawable(SceneRenderer *renderer,const Drawab
 }
 
 
-// Epicenter fork 2026-06-13: was `true` on device. Metal heaps never shrink —
-// HeapManagerMTL only ever allocates new heaps (findHeap) and refreshes
-// available size (updateHeaps); there is no release path. So footprint stayed
-// pinned at the peak high-water mark: viewing the continental US materialized
-// ~112k fault strands (~2 GB of heap), and culling / de-mat returned the
-// buffers to the heaps but NEVER to the OS — zooming into a tiny region still
-// showed ~1.6 GB. Switching to individual buffers (the path already used on
-// Simulator/Catalyst, and the `else` branch in allocateBuffer) frees straight
-// to the OS on drawable teardown, so culling/de-mat actually reclaim memory.
-// Trade: more per-buffer alloc overhead vs heap sub-allocation. BACK OUT by
-// restoring `true` here if alloc throughput / fragmentation regresses.
-const bool HeapManagerMTL::UseHeaps = false;
+// Heaps give fast bulk allocation (load-bearing for the 22k-marker plot and
+// tile streaming — global UseHeaps=false regressed the saved-marker plot from
+// ~300ms to 25s). We KEEP heaps for that speed, and instead teach
+// HeapManagerMTL::updateHeaps to RELEASE fully-empty heaps (it never did —
+// findHeap only allocates, so footprint was pinned at the peak high-water
+// mark). Fault Drawable heaps empty out on cull/de-mat and get released, so
+// memory reclaims without slowing allocation. (Simulator/Catalyst keep the
+// individual-buffer path — MTLHeap support there is historically unreliable.)
+const bool HeapManagerMTL::UseHeaps =
+#if TARGET_OS_SIMULATOR || TARGET_OS_MACCATALYST
+    false;
+#else
+    true;
+#endif
 
 HeapManagerMTL::HeapManagerMTL(id<MTLDevice> mtlDevice)
 : mtlDevice(mtlDevice)
@@ -310,12 +312,39 @@ HeapManagerMTL::HeapManagerMTL(id<MTLDevice> mtlDevice)
 
 void HeapManagerMTL::updateHeaps()
 {
-    for (unsigned int ig=0;ig<MaxType;ig++) {
-        for (auto heap : heapGroups[ig].heaps) {
-            heap->maxAvailSize = [heap->heap maxAvailableSizeWithAlignment:memAlign];
+    // Epicenter fork: stock WG only refreshed available sizes here and never
+    // released heaps, so device footprint stayed pinned at the peak high-water
+    // mark (a continental-US fault view grew the Drawable heaps to ~2 GB and
+    // culling/de-mat never gave it back). Now we RELEASE fully-empty buffer
+    // heaps: a heap is empty when its available size is back to the as-created
+    // baseline (all sub-allocated buffers freed); release once it's stayed
+    // empty for kReleaseEmptyTicks frames (hysteresis against pan/zoom churn).
+    // Allocation still goes through heaps, so the bulk-marker/tile alloc speed
+    // is preserved (global UseHeaps=false regressed the marker plot to 25 s).
+    static const int kReleaseEmptyTicks = 60;
+    {
+        std::lock_guard<std::mutex> guardLock(lock);
+        for (unsigned int ig=0;ig<MaxType;ig++) {
+            auto &heaps = heapGroups[ig].heaps;
+            for (auto it = heaps.begin(); it != heaps.end(); ) {
+                const HeapInfoRef &h = *it;
+                h->maxAvailSize = [h->heap maxAvailableSizeWithAlignment:memAlign];
+                if (h->emptyAvailSize > 0 && h->maxAvailSize >= h->emptyAvailSize) {
+                    if (++h->emptyTicks >= kReleaseEmptyTicks) {
+                        // Last ref drops here → MTLHeap deallocs → OS reclaims.
+                        // Safe: fully empty means no live buffer references it.
+                        it = heaps.erase(it);
+                        continue;
+                    }
+                } else {
+                    h->emptyTicks = 0;
+                }
+                ++it;
+            }
         }
     }
-    
+
+    // Texture heaps (tiles) keep stock behavior — refresh only, no release.
     for (auto texHeap : texGroups.heaps) {
         texHeap->maxAvailSize = [texHeap->heap maxAvailableSizeWithAlignment:memAlign];
     }
@@ -337,6 +366,7 @@ HeapManagerMTL::HeapInfoRef HeapManagerMTL::allocateHeap(unsigned size, unsigned
                 HeapInfoRef heapInfo = std::make_shared<HeapManagerMTL::HeapInfo>();
                 heapInfo->heap = heap;
                 heapInfo->maxAvailSize = availableSize;
+                heapInfo->emptyAvailSize = availableSize;  // baseline for "fully empty"
                 return heapInfo;
             }
         }

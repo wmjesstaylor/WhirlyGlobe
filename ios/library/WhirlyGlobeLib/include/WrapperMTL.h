@@ -188,6 +188,11 @@ protected:
     {
         size_t maxAvailSize;
         id<MTLHeap> heap;
+        // Epicenter fork: avail size when freshly created (the "fully empty"
+        // baseline) + consecutive updateHeaps frames seen empty, for the
+        // empty-heap release path (stock WG never released heaps).
+        size_t emptyAvailSize = 0;
+        int emptyTicks = 0;
     };
     typedef std::shared_ptr<HeapInfo> HeapInfoRef;
     
