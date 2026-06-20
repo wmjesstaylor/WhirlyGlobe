@@ -1693,6 +1693,13 @@ static const float PerfOutputDelay = 15.0;
     return CGSizeMake(frameSize.x(), frameSize.y());
 }
 
+- (unsigned int)currentFrameCount
+{
+    if (!renderControl || !renderControl->sceneRenderer)
+        return 0;
+    return renderControl->sceneRenderer->getFrameCount();
+}
+
 - (MaplyRenderType)getRenderType
 {
     if (!renderControl || !renderControl->sceneRenderer)

@@ -1634,4 +1634,10 @@ typedef void (__strong ^InitCompletionBlock)(void);
  */
 @property(nonatomic,assign) bool fastGestures;
 
+/// Read-only render-loop frame counter (Epicenter globe-health watchdog).
+/// Climbing across a sampling window = renderer is presenting frames; flat =
+/// render loop stalled even when the drawable/aspect look healthy. Returns 0 if
+/// the renderer is not up. Passive diagnostic only — never an auto-heal trigger.
+- (unsigned int)currentFrameCount;
+
 @end

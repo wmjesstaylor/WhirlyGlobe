@@ -379,6 +379,12 @@ protected:
     void shutdown();
 
 public:
+    /// Frame counter — increments once per rendered frame. Read-only liveness
+    /// probe for the app's globe-health watchdog (Epicenter): sampled across a
+    /// window, a climbing count means the renderer is presenting; flat means the
+    /// render loop is stalled even when drawable/aspect read healthy.
+    unsigned int getFrameCount() const { return frameCount; }
+
     /// Scene we're drawing.  This is set from outside
     Scene *scene = nullptr;
 
