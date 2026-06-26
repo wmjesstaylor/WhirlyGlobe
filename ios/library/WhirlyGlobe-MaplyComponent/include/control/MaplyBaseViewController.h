@@ -1640,4 +1640,11 @@ typedef void (__strong ^InitCompletionBlock)(void);
 /// the renderer is not up. Passive diagnostic only — never an auto-heal trigger.
 - (unsigned int)currentFrameCount;
 
+/// Read-only PRESENT-truth counter (Epicenter). Increments only when a real
+/// (non-nil) drawable is actually presented and its command buffer completes
+/// without error. Diverges from currentFrameCount precisely when the Metal
+/// surface is wedged: frames climb (render loop entered) while presents stay
+/// flat (nothing handed to the compositor). Returns 0 if the renderer is down.
+- (unsigned int)currentFramePresentedCount;
+
 @end

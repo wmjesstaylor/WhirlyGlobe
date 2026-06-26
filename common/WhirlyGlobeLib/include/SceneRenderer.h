@@ -385,6 +385,15 @@ public:
     /// render loop is stalled even when drawable/aspect read healthy.
     unsigned int getFrameCount() const { return frameCount; }
 
+    /// Present-truth counter (Epicenter) — increments ONLY when a frame is
+    /// actually handed to the compositor: a non-nil CAMetalDrawable presented
+    /// AND its command buffer completed without error. A reclaimed Metal surface
+    /// returns a nil drawable (presentDrawable:nil is a silent no-op that still
+    /// "completes successfully"), so this stays FLAT while getFrameCount() keeps
+    /// climbing — that divergence is the wedge signature getFrameCount() alone
+    /// cannot see. Bumped by SceneRendererMTL's command-buffer completion handler.
+    unsigned int getFramePresentedCount() const { return framePresentedCount; }
+
     /// Scene we're drawing.  This is set from outside
     Scene *scene = nullptr;
 
@@ -413,6 +422,10 @@ protected:
     bool triggerDraw = false;
     
     unsigned int frameCount = 0;
+    // Epicenter present-truth (see getFramePresentedCount). Bumped on the GPU
+    // completion thread; read on main. Plain uint like frameCount — aligned
+    // 32-bit access is atomic on ARM, and the probe only checks "did it advance".
+    unsigned int framePresentedCount = 0;
     unsigned int frameCountLastChanged = 0;
     TimeInterval frameCountStart = 0.0;
     PerformanceTimer perfTimer;

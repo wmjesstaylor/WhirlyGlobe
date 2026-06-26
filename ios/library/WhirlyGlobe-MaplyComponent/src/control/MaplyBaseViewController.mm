@@ -1700,6 +1700,13 @@ static const float PerfOutputDelay = 15.0;
     return renderControl->sceneRenderer->getFrameCount();
 }
 
+- (unsigned int)currentFramePresentedCount
+{
+    if (!renderControl || !renderControl->sceneRenderer)
+        return 0;
+    return renderControl->sceneRenderer->getFramePresentedCount();
+}
+
 - (MaplyRenderType)getRenderType
 {
     if (!renderControl || !renderControl->sceneRenderer)

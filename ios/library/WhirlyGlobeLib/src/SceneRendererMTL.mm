@@ -1237,9 +1237,15 @@ void SceneRendererMTL::tryRender(TimeInterval duration, RenderInfo *renderInfo)
             renderTarget->addPostProcessing(mtlDevice,cmdBuff);
 
             // Main screen has to be committed
+            bool screenPresentReal = false;
             if (drawGetter != nil && workGroup->groupType == WorkGroup::ScreenRender) {
                 id<CAMetalDrawable> drawable = [drawGetter getDrawable];
                 [cmdBuff presentDrawable:drawable];
+                // Epicenter present-truth: a reclaimed surface returns a nil
+                // drawable; presentDrawable:nil silently no-ops. Remember whether
+                // we handed over a REAL drawable so the completion handler can
+                // count it as an actual present (see framePresentedCount).
+                screenPresentReal = (drawable != nil);
             }
 
             // Capture shutdown signal in case `this` is destroyed before the blocks below execute.
@@ -1250,9 +1256,17 @@ void SceneRendererMTL::tryRender(TimeInterval duration, RenderInfo *renderInfo)
             const auto shuttingDown = this->_isShuttingDown;
 
             // This particular target may want a snapshot
-            [cmdBuff addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull) {
+            [cmdBuff addCompletedHandler:^(id<MTLCommandBuffer> _Nonnull buf) {
                 if (*shuttingDown)
                     return;
+
+                // Epicenter present-truth: count a frame as actually PRESENTED
+                // only when a real (non-nil) drawable was handed over AND the GPU
+                // completed the buffer without error. A reclaimed surface yields a
+                // nil drawable (silent no-op present that still "completes"), so
+                // this stays flat while frameCount climbs = the wedge signature.
+                if (screenPresentReal && buf.status == MTLCommandBufferStatusCompleted)
+                    framePresentedCount++;
 
                 // TODO: Sort these into the render targets
                 dispatch_async(dispatch_get_main_queue(), ^{
