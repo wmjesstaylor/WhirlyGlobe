@@ -1647,4 +1647,11 @@ typedef void (__strong ^InitCompletionBlock)(void);
 /// flat (nothing handed to the compositor). Returns 0 if the renderer is down.
 - (unsigned int)currentFramePresentedCount;
 
+/// Request ONE render on the next display-link tick (flag only, non-blocking).
+/// Pairs with currentFramePresentedCount for an active liveness probe: kick,
+/// wait a beat, check whether presents advanced. Deliberately does NOT render
+/// synchronously — a synchronous render on a reclaimed surface blocks in
+/// nextDrawable on the MAIN thread (ANR). The render thread consumes the flag.
+- (void)kickFrameForLivenessProbe;
+
 @end

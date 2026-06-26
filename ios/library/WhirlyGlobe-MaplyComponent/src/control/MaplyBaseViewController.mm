@@ -1707,6 +1707,17 @@ static const float PerfOutputDelay = 15.0;
     return renderControl->sceneRenderer->getFramePresentedCount();
 }
 
+- (void)kickFrameForLivenessProbe
+{
+    if (!renderControl || !renderControl->sceneRenderer)
+        return;
+    // Flag-only: the render thread renders one frame on its next tick. NOT a
+    // synchronous render() — that blocks in nextDrawable on the main thread on a
+    // reclaimed surface (ANR). The app checks currentFramePresentedCount after a
+    // beat to see whether this kick actually reached the compositor.
+    renderControl->sceneRenderer->forceDrawNextFrame();
+}
+
 - (MaplyRenderType)getRenderType
 {
     if (!renderControl || !renderControl->sceneRenderer)
