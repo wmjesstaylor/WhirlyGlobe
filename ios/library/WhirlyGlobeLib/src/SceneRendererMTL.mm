@@ -1265,8 +1265,15 @@ void SceneRendererMTL::tryRender(TimeInterval duration, RenderInfo *renderInfo)
                 // completed the buffer without error. A reclaimed surface yields a
                 // nil drawable (silent no-op present that still "completes"), so
                 // this stays flat while frameCount climbs = the wedge signature.
-                if (screenPresentReal && buf.status == MTLCommandBufferStatusCompleted)
+                if (screenPresentReal && buf.status == MTLCommandBufferStatusCompleted) {
                     framePresentedCount++;
+                    // Epicenter wedge instrumentation: the FIRST real present is
+                    // where the cold-build race window closes — a globe that never
+                    // reaches this is born wedged. One-shot log onto the
+                    // [GLOBE-LIFE] timeline (GPU-completion thread; NSLog is safe).
+                    if (framePresentedCount == 1)
+                        NSLog(@"[GLOBE-LIFE] WG first real present (frameCount=%u)", frameCount);
+                }
 
                 // TODO: Sort these into the render targets
                 dispatch_async(dispatch_get_main_queue(), ^{
