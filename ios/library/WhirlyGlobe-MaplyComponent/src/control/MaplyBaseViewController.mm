@@ -30,6 +30,14 @@
 #import "MaplyURLSessionManager+Private.h"
 #import <sys/utsname.h>
 
+// Epicenter [GLOBE-LIFE] wedge-investigation instrumentation — gated OUT of
+// release (re-enable when we return to the globe-freeze topic).
+#if DEBUG
+#define EP_GLOBE_LIFE_LOG(...) NSLog(__VA_ARGS__)
+#else
+#define EP_GLOBE_LIFE_LOG(...) do { } while (0)
+#endif
+
 #if !MAPLY_MINIMAL
 # import "MaplyAnnotation_private.h"
 # import "gestures/Maply3dTouchPreviewDelegate.h"
@@ -377,13 +385,13 @@ using namespace WhirlyKit;
     // Epicenter wedge instrumentation: every animation flip (WG's own hooks AND
     // the app's UIKit path) funnels through here — log it so the toggle war
     // (candidate #2) is visible whoever wins the race.
-    NSLog(@"[GLOBE-LIFE] WG.startAnimation (isAnimating was %d)", wrapView.isAnimating);
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.startAnimation (isAnimating was %d)", wrapView.isAnimating);
     [wrapView startAnimation];
 }
 
 - (void)stopAnimation
 {
-    NSLog(@"[GLOBE-LIFE] WG.stopAnimation (isAnimating was %d)", wrapView.isAnimating);
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.stopAnimation (isAnimating was %d)", wrapView.isAnimating);
     [wrapView stopAnimation];
 }
 
@@ -405,7 +413,7 @@ using namespace WhirlyKit;
     // SwiftUI→UIKit path — so the three-layer animation-state race (candidate #2)
     // is invisible from the app side. Log entry/exit state onto the shared
     // timeline (same prefix used app-side; interleaves by timestamp in Console).
-    NSLog(@"[GLOBE-LIFE] WG.appBackground enter: wasAnimating=%d isAnimating=%d threads=%lu",
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.appBackground enter: wasAnimating=%d isAnimating=%d threads=%lu",
           wasAnimating, wrapView.isAnimating,
           (unsigned long)(renderControl ? renderControl->layerThreads.count : 0));
     if(!wasAnimating || wrapView.isAnimating)
@@ -421,13 +429,13 @@ using namespace WhirlyKit;
     {
         [t pause];
     }
-    NSLog(@"[GLOBE-LIFE] WG.appBackground exit: wasAnimating=%d isAnimating=%d (layer threads paused)",
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.appBackground exit: wasAnimating=%d isAnimating=%d (layer threads paused)",
           wasAnimating, wrapView.isAnimating);
 }
 
 - (void)appForeground:(NSNotification *)note
 {
-    NSLog(@"[GLOBE-LIFE] WG.appForeground enter: wasAnimating=%d isAnimating=%d threads=%lu",
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.appForeground enter: wasAnimating=%d isAnimating=%d threads=%lu",
           wasAnimating, wrapView.isAnimating,
           (unsigned long)(renderControl ? renderControl->layerThreads.count : 0));
     if (!renderControl)
@@ -442,13 +450,13 @@ using namespace WhirlyKit;
         [self startAnimation];
         wasAnimating = false;
     }
-    NSLog(@"[GLOBE-LIFE] WG.appForeground exit: isAnimating=%d (layer threads unpaused, restart=%@)",
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.appForeground exit: isAnimating=%d (layer threads unpaused, restart=%@)",
           wrapView.isAnimating, wasAnimating ? @"NO(was false)" : @"per wasAnimating");
 }
 
 - (void)viewWillAppear:(BOOL)animated
 {
-    NSLog(@"[GLOBE-LIFE] WG.viewWillAppear -> startAnimation (isAnimating was %d)", wrapView.isAnimating);
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.viewWillAppear -> startAnimation (isAnimating was %d)", wrapView.isAnimating);
 	[self startAnimation];
 
 	[super viewWillAppear:animated];
@@ -458,7 +466,7 @@ using namespace WhirlyKit;
 {
 	[super viewWillDisappear:animated];
 
-    NSLog(@"[GLOBE-LIFE] WG.viewWillDisappear -> stopAnimation (isAnimating was %d)", wrapView.isAnimating);
+    EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG.viewWillDisappear -> stopAnimation (isAnimating was %d)", wrapView.isAnimating);
 	[self stopAnimation];
 }
 

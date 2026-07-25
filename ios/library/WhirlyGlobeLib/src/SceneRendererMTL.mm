@@ -31,6 +31,14 @@
 #import "RenderTargetMTL.h"
 #import "MaplyRenderController_private.h"
 
+// Epicenter [GLOBE-LIFE] wedge-investigation instrumentation — gated OUT of
+// release (re-enable when we return to the globe-freeze topic).
+#if DEBUG
+#define EP_GLOBE_LIFE_LOG(...) NSLog(__VA_ARGS__)
+#else
+#define EP_GLOBE_LIFE_LOG(...) do { } while (0)
+#endif
+
 // Capture a range of frames to the developer tools (frames are 1-based)
 #define CAPTURE_FRAME_START 0
 #define CAPTURE_FRAME_END (CAPTURE_FRAME_START+0)
@@ -1272,7 +1280,7 @@ void SceneRendererMTL::tryRender(TimeInterval duration, RenderInfo *renderInfo)
                     // reaches this is born wedged. One-shot log onto the
                     // [GLOBE-LIFE] timeline (GPU-completion thread; NSLog is safe).
                     if (framePresentedCount == 1)
-                        NSLog(@"[GLOBE-LIFE] WG first real present (frameCount=%u)", frameCount);
+                        EP_GLOBE_LIFE_LOG(@"[GLOBE-LIFE] WG first real present (frameCount=%u)", frameCount);
                 }
 
                 // TODO: Sort these into the render targets
