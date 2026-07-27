@@ -931,24 +931,31 @@ using namespace WhirlyKit;
         return;
     }
     
+    // Snapshot the request strongly so -shutdown (which clears every tile->request
+    // on the fetcher's serial queue) can't free it under the GLOBAL-queue callback
+    // below — a queue -shutdown's dispatch_sync(queue) does NOT drain, so a tile
+    // finishing as the globe tears down would otherwise use-after-free in
+    // _Block_copy. Epicenter crash 2026-07-25 (iPhone 16 / iOS 26.5.2). The active
+    // path is unchanged; we only bail when the fetcher has been torn down.
+    MaplyTileFetchRequest * __strong request = tile ? tile->request : nil;
     MaplyRemoteTileFetcher * __weak weakSelf = self;
-    
+
     // Do the callback on a background queue
     dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_DEFAULT, 0),
     ^{
-        if (!tile)
+        MaplyRemoteTileFetcher *strongSelf = weakSelf;
+        if (!strongSelf || !strongSelf->active || !tile)
             return;
-        
+
         // We assume the parsing is going to take some time
-        if (!error) {
-            if (tile->request)
-                tile->request.success(tile->request,data);
-        } else {
-            if (tile->request)
-                tile->request.failure(tile->request, error);
+        if (request) {
+            if (!error)
+                request.success(request, data);
+            else
+                request.failure(request, error);
         }
 
-        dispatch_queue_t theQueue = [weakSelf getQueue];
+        dispatch_queue_t theQueue = [strongSelf getQueue];
         if (theQueue) {
             dispatch_async(theQueue,
             ^{
