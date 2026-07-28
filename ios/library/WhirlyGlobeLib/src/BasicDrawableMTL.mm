@@ -423,6 +423,18 @@ void BasicDrawableMTL::setupArgBuffers(id<MTLDevice> mtlDevice,RenderSetupInfoMT
 // Called before anything starts calculating or drawing to fill in buffers and such
 bool BasicDrawableMTL::preProcess(SceneRendererMTL *sceneRender,id<MTLCommandBuffer> cmdBuff,id<MTLBlitCommandEncoder> bltEncode,SceneMTL *scene)
 {
+    // Guard against a drawable whose Metal buffers were torn down
+    // (teardownForRenderer sets setupForMTL=false and clears every buffer) yet is
+    // still referenced in the renderer's drawGroups for this frame. Blitting into
+    // its cleared/reclaimed buffers is the BasicDrawableMTL::preProcess
+    // use-after-free (Crashlytics 1d9db1a7) — fatal on memory-constrained (3 GB)
+    // devices where the freed heap region is actually unmapped. Mirrors the
+    // existing basicDrawMTL->setupForMTL guards in BasicDrawableInstanceMTL, and
+    // also skips a not-yet-set-up drawable (harmless: it renders next frame).
+    if (!setupForMTL) {
+        return false;
+    }
+
     if (programId == Program::NoProgramID && calcProgramId == Program::NoProgramID) {
         return true;
     }

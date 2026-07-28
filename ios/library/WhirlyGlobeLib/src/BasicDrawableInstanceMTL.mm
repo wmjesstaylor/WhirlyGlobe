@@ -308,6 +308,14 @@ bool BasicDrawableInstanceMTL::preProcess(SceneRendererMTL *sceneRender,
                 id<MTLBlitCommandEncoder> bltEncode,
                 SceneMTL *scene)
 {
+    // Same teardown-race guard as BasicDrawableMTL: skip a drawable whose Metal
+    // setup was torn down (setupForMTL=false, buffers cleared) but that lingers
+    // in the renderer's drawGroups. Instanced variant of the same preProcess
+    // use-after-free (Crashlytics ba5b9197).
+    if (!setupForMTL) {
+        return false;
+    }
+
     if (programID == Program::None) {
         return true;
     }
