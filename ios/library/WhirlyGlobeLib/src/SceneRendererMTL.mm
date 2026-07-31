@@ -968,51 +968,62 @@ void SceneRendererMTL::tryRender(TimeInterval duration, RenderInfo *renderInfo)
             // Resources used by this container
             ResourceRefsMTL resources;
 
-            if (indirectRender) {
-                // Run pre-process on the draw groups
-                for (const auto &drawGroup : targetContainerMTL->drawGroups) {
-                    if (drawGroup->numCommands > 0) {
-                        bool resourcesChanged = false;
-                        for (auto &draw : drawGroup->drawables) {
-                            DrawableMTL *drawMTL = dynamic_cast<DrawableMTL *>(draw.get());
-                            if (!drawMTL) {
-                                wkLogLevel(Error, "SceneRendererMTL: Invalid drawable.  Skipping.");
-                                continue;
-                            }
-                            drawMTL->runTweakers(&baseFrameInfo);
-                            if (drawMTL->preProcess(this, cmdBuff, bltEncode, sceneMTL))
-                                resourcesChanged = true;
-                        }
-                        // At least one of the drawables is pointing at different resources, so we need to redo this
-                        if (resourcesChanged) {
-                            drawGroup->resources.clear();
+            // Wrap the pre-process + buffer setup so a throw (e.g. a Metal blit
+            // into a torn-down/reclaimed buffer on a constrained-device wake)
+            // can't leak bltEncode — an un-endEncoding'd MTLCommandEncoder aborts
+            // Metal in its dealloc (Crashlytics 4da2a657). Mirrors the render
+            // encoder's existing try/catch below.
+            try {
+                if (indirectRender) {
+                    // Run pre-process on the draw groups
+                    for (const auto &drawGroup : targetContainerMTL->drawGroups) {
+                        if (drawGroup->numCommands > 0) {
+                            bool resourcesChanged = false;
                             for (auto &draw : drawGroup->drawables) {
-                                if (const auto drawMTL = dynamic_cast<DrawableMTL *>(draw.get())) {
-                                    drawMTL->enumerateResources(&baseFrameInfo, drawGroup->resources);
+                                DrawableMTL *drawMTL = dynamic_cast<DrawableMTL *>(draw.get());
+                                if (!drawMTL) {
+                                    wkLogLevel(Error, "SceneRendererMTL: Invalid drawable.  Skipping.");
+                                    continue;
+                                }
+                                drawMTL->runTweakers(&baseFrameInfo);
+                                if (drawMTL->preProcess(this, cmdBuff, bltEncode, sceneMTL))
+                                    resourcesChanged = true;
+                            }
+                            // At least one of the drawables is pointing at different resources, so we need to redo this
+                            if (resourcesChanged) {
+                                drawGroup->resources.clear();
+                                for (auto &draw : drawGroup->drawables) {
+                                    if (const auto drawMTL = dynamic_cast<DrawableMTL *>(draw.get())) {
+                                        drawMTL->enumerateResources(&baseFrameInfo, drawGroup->resources);
+                                    }
                                 }
                             }
+                            resources.addResources(drawGroup->resources);
                         }
-                        resources.addResources(drawGroup->resources);
+                    }
+                } else {
+                    // Run pre-process ahead of time
+                    for (const auto &draw : targetContainer->drawables) {
+                        if (const auto drawMTL = dynamic_cast<DrawableMTL *>(draw.get())) {
+                            drawMTL->runTweakers(&baseFrameInfo);
+                            drawMTL->preProcess(this, cmdBuff, bltEncode, sceneMTL);
+                            drawMTL->enumerateResources(&baseFrameInfo, resources);
+                        }
                     }
                 }
-            } else {
-                // Run pre-process ahead of time
-                for (const auto &draw : targetContainer->drawables) {
-                    if (const auto drawMTL = dynamic_cast<DrawableMTL *>(draw.get())) {
-                        drawMTL->runTweakers(&baseFrameInfo);
-                        drawMTL->preProcess(this, cmdBuff, bltEncode, sceneMTL);
-                        drawMTL->enumerateResources(&baseFrameInfo, resources);
-                    }
-                }
-            }
 
-            // TODO: Just set these up once and copy it into position
-            setupLightBuffer(sceneMTL,&baseFrameInfo,bltEncode);
-            for (unsigned oi=0;oi<offFrameInfos.size();oi++) {
-                setupUniformBuffer(&offFrameInfos[oi],oi,bltEncode,scene->getCoordAdapter());
+                // TODO: Just set these up once and copy it into position
+                setupLightBuffer(sceneMTL,&baseFrameInfo,bltEncode);
+                for (unsigned oi=0;oi<offFrameInfos.size();oi++) {
+                    setupUniformBuffer(&offFrameInfos[oi],oi,bltEncode,scene->getCoordAdapter());
+                }
+                [bltEncode updateFence:preProcessFence];
+                [bltEncode endEncoding];
             }
-            [bltEncode updateFence:preProcessFence];
-            [bltEncode endEncoding];
+            catch (...) {
+                [bltEncode endEncoding];
+                throw;
+            }
             
             // If we're forcing a mipmap calculation, then we're just going to use this render target once
             // If not, then we run some program over it multiple times
@@ -1067,6 +1078,11 @@ void SceneRendererMTL::tryRender(TimeInterval duration, RenderInfo *renderInfo)
                         ProgramMTL *program = (ProgramMTL *)scene->getProgram(renderTarget->computeShaderID);
                         if (!program) {
                             wkLogLevel(Error, "SceneRendererMTL: Invalid program for compute render target.");
+                            // We already created computeCmdEncode above; end it before
+                            // skipping this level. A MTLCommandEncoder released without
+                            // endEncoding aborts Metal in its dealloc (Crashlytics
+                            // 4da2a657 variant — invalid program during teardown).
+                            [cmdEncode endEncoding];
                             continue;
                         }
 

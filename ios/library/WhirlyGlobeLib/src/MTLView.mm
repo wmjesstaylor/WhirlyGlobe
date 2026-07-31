@@ -104,6 +104,7 @@ using namespace WhirlyKit;
 @implementation WhirlyKitMTLView
 {
     bool animating;
+    bool loggedZeroDrawableSkip;   // edge-log the 0x0-drawable guard (Crashlytics 4da2a657)
 }
 
 // defined in WhirlyKitViewWrapper
@@ -203,6 +204,26 @@ using namespace WhirlyKit;
             MTLRenderPassDescriptor *renderPassDesc = self.currentRenderPassDescriptor;
             if (!renderPassDesc)
                 return;
+
+            // Constrained-device wakes (memory-starved 3 GB iPad) can hand back a
+            // non-nil render pass whose drawable came up 0x0 — a born-dead Metal
+            // surface. Building a render pass against a 0x0 target aborts Metal
+            // when the command encoder is torn down (Crashlytics 4da2a657). Skip
+            // the frame; MTKView re-issues -draw on the next display link, so this
+            // self-heals once the layer is actually sized. Edge-logged so a real
+            // (or staging-forced) occurrence is visible without per-frame spam.
+            id<MTLTexture> colorTex = renderPassDesc.colorAttachments[0].texture;
+            if (!colorTex || colorTex.width == 0 || colorTex.height == 0) {
+                if (!loggedZeroDrawableSkip) {
+                    wkLogLevel(Warn, "WhirlyKitMTLView: 0x0 drawable — skipping frames (born-dead surface); self-heals on resize");
+                    loggedZeroDrawableSkip = true;
+                }
+                return;
+            }
+            if (loggedZeroDrawableSkip) {
+                wkLogLevel(Warn, "WhirlyKitMTLView: drawable resized — resuming render");
+                loggedZeroDrawableSkip = false;
+            }
 
             SceneRendererMTL::RenderInfoMTL info;
             info.renderPassDesc = renderPassDesc;
