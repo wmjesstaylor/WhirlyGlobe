@@ -450,6 +450,9 @@ bool BasicDrawableMTL::preProcess(SceneRendererMTL *sceneRender,id<MTLCommandBuf
     }
 
     bool ret = false;
+    // Set when an allocation below came back empty, so the changed-flags are NOT
+    // cleared and the work is retried on the next frame instead of being lost.
+    bool allocFailed = false;
     if (texturesChanged || valuesChanged || prog->texturesChanged || prog->valuesChanged) {
         ret = true;
         
@@ -464,7 +467,28 @@ bool BasicDrawableMTL::preProcess(SceneRendererMTL *sceneRender,id<MTLCommandBuf
         }
         if (baseBuff.valid) {
             BufferEntryMTL srcBuff = buffBuild.buildBuffer();
-            [bltEncode copyFromBuffer:srcBuff.buffer sourceOffset:0 toBuffer:baseBuff.buffer destinationOffset:baseBuff.offset size:srcBuff.buffer.length];
+            // srcBuff is a FRESH allocation made on the line above, and it can come
+            // back empty: HeapManagerMTL::allocateBuffer returns a default-constructed
+            // BufferEntryMTL (heap nil, buffer nil, valid false) when findHeap cannot
+            // get a heap, and findHeap needs a NEW 4-32 MB heap once the existing ones
+            // are full. Under memory pressure that fails and nil went straight into the
+            // blit below, where the driver dereferenced it.
+            //
+            // This is the un-fixed half of Crashlytics 1d9db1a7: EXC_BAD_ACCESS
+            // KERN_INVALID_ADDRESS 0x68 inside AGXMetal, two frames above preProcess.
+            // Seen on 2.0.4 / 2.0.7 / 2.1.0, only ever on 3 GB iPads (iPad 9th gen,
+            // iPad 8th gen, iPad mini 5) with 33-53 MiB free -- exactly the range where
+            // a 4-32 MB heap request starts failing. On a 4 GB device the allocation
+            // succeeds and the bug is invisible, which is why it survived years of
+            // testing on roomier hardware and predates 1.9.14.
+            //
+            // baseBuff.valid was already checked; srcBuff never was. Skipping keeps the
+            // previous frame's colour for one frame instead of killing the app.
+            if (srcBuff.valid && srcBuff.buffer) {
+                [bltEncode copyFromBuffer:srcBuff.buffer sourceOffset:0 toBuffer:baseBuff.buffer destinationOffset:baseBuff.offset size:srcBuff.buffer.length];
+            } else {
+                allocFailed = true;
+            }
         }
 
         if ((texturesChanged || prog->texturesChanged) && (vertTexInfo || fragTexInfo)) {
@@ -597,8 +621,14 @@ bool BasicDrawableMTL::preProcess(SceneRendererMTL *sceneRender,id<MTLCommandBuf
             }
         }
 
-        texturesChanged = false;
-        valuesChanged = false;
+        // Leave the flags set if an allocation failed, so the next frame retries
+        // rather than silently keeping stale values until something else happens
+        // to mark the drawable dirty. Under sustained pressure this simply retries
+        // each frame and costs nothing; when memory frees up it self-heals.
+        if (!allocFailed) {
+            texturesChanged = false;
+            valuesChanged = false;
+        }
     }
     
     return ret;
