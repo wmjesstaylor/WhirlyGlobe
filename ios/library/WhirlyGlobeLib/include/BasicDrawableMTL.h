@@ -109,6 +109,11 @@ public:
     int numPts,numTris;
     id<MTLRenderPipelineState> renderState; // Cacheable render state
     MTLVertexDescriptor *vertDesc;     // Description of vertices
+    // The defaults vertDesc was built with (data only, no buffers). getVertexDescriptor
+    // hands a copy to every later caller, so each owner -- this drawable AND each
+    // BasicDrawableInstanceMTL of it -- binds them. Without it, whichever caller built
+    // vertDesc first got the defaults and the rest bound nothing at those slots.
+    std::vector<AttributeDefault> vertDescDefaults;
     BufferEntryMTL triBuffer;           // Metal side buffer for triangles
     std::vector<AttributeDefault> defaultAttrs;
     

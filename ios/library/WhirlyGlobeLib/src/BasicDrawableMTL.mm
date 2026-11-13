@@ -125,6 +125,7 @@ void BasicDrawableMTL::teardownForRenderer(const RenderSetupInfo *setupInfo,Scen
 
     renderState = nil;
     vertDesc = nil;
+    vertDescDefaults.clear();
     triBuffer.clear();
     defaultAttrs.clear();
     mainBuffer.clear();
@@ -148,8 +149,17 @@ void BasicDrawableMTL::teardownForRenderer(const RenderSetupInfo *setupInfo,Scen
     
 MTLVertexDescriptor *BasicDrawableMTL::getVertexDescriptor(id<MTLFunction> vertFunc,std::vector<AttributeDefault> &defAttrs)
 {
-    if (vertDesc)
+    if (vertDesc) {
+        // Cached descriptor: the caller still needs the defaults it declares, or a slot
+        // (e.g. 4, the second texture coordinate) is declared but never bound, which
+        // Metal API Validation reports as "missing vertexDescriptor Buffer binding at
+        // index N" (seen 2026-11-13, iPhone Duo simulator, iOS 27.2, via a
+        // BasicDrawableInstanceMTL draw). Only fill an EMPTY list: a non-empty one
+        // already has its buffers set up (the draw-time getRenderPipelineState callers).
+        if (defAttrs.empty())
+            defAttrs = vertDescDefaults;
         return vertDesc;
+    }
     
     vertDesc = [[MTLVertexDescriptor alloc] init];
     defAttrs.clear();
@@ -283,6 +293,8 @@ MTLVertexDescriptor *BasicDrawableMTL::getVertexDescriptor(id<MTLFunction> vertF
         }
     }
 
+    // Remember the defaults (data only; each caller sets up its own buffers afterwards).
+    vertDescDefaults = defAttrs;
     return vertDesc;
 }
     
