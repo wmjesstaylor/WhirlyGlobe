@@ -74,4 +74,10 @@
 /// points at the marker. Set this *before* calling addAnnotation:.
 @property (nonatomic) bool liquidGlassStyle;
 
+/// Extra margins (in the globe view's coordinates) the callout must stay
+/// inside when it is first presented, e.g. to open clear of floating
+/// controls. Forwarded to SMCalloutView.constrainedInsets. Set before
+/// addAnnotation:.
+@property (nonatomic) UIEdgeInsets constrainedInsets;
+
 @end

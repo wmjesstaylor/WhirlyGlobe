@@ -115,7 +115,20 @@
     _liquidGlassStyle = liquidGlassStyle;
     if (liquidGlassStyle) {
         _calloutView.backgroundView = [[LiquidGlassCalloutBackgroundView alloc] init];
+        // Tighter than SMCalloutView's 12 pt default (Epicenter compact
+        // popup, 2026-11-15); the hosted content adds its own small padding.
+        _calloutView.contentViewInset = UIEdgeInsetsMake(6, 8, 6, 8);
     }
+}
+
+- (void)setConstrainedInsets:(UIEdgeInsets)constrainedInsets
+{
+    _calloutView.constrainedInsets = constrainedInsets;
+}
+
+- (UIEdgeInsets)constrainedInsets
+{
+    return _calloutView.constrainedInsets;
 }
 
 @end

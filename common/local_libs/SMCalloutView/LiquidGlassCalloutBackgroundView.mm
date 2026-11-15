@@ -15,7 +15,7 @@
 
 static const CGFloat kCornerRadius   = 8.0;
 static const CGFloat kArrowWidth     = 22.0;
-static const CGFloat kAnchorHeight   = 12.0;
+static const CGFloat kAnchorHeight   = 18.0;   // was 12 — lengthened 2026-11-15 (Epicenter compact popup)
 static const CGFloat kAnchorMargin   = 24.0;
 
 @implementation LiquidGlassCalloutBackgroundView
@@ -29,7 +29,11 @@ static const CGFloat kAnchorMargin   = 24.0;
 
         // System material blur — adapts to light/dark and picks up underlying
         // map content for the Liquid Glass effect.
-        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
+        // Ultra-thin: as transparent as the popup can be and stay legible
+        // over the globe (2026-11-15). Liquid Glass CLEAR was tried and
+        // rejected: illegible over land, and UIGlassEffect ignores the layer
+        // mask, so it drew a rectangle with no arrow shape.
+        UIBlurEffect *blur = [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemUltraThinMaterial];
         _blurView = [[UIVisualEffectView alloc] initWithEffect:blur];
         _blurView.userInteractionEnabled = NO;
         [self addSubview:_blurView];
