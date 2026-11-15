@@ -117,6 +117,15 @@ typedef void (__strong ^InitCompletionBlock)(void);
   */
 @property(nonatomic,assign) bool selection;
 
+/**
+    Optional view that annotation callouts are presented in, instead of the
+    globe/map's own view. Lets the host app layer its own chrome BELOW the
+    callouts (e.g. a legend that callouts should draw over). It must cover
+    exactly the same area as this controller's view, since callouts are
+    positioned in that coordinate space. nil = the controller's view.
+  */
+@property (nonatomic, weak) UIView *annotationContainerView;
+
 /** 
     Set the globe (not the UIView's) background color.
     

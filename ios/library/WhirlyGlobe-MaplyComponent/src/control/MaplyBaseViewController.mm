@@ -934,14 +934,17 @@ static const float PerfOutputDelay = 15.0;
     
     CGRect rect = CGRectMake(pt.x+offset.x, pt.y+offset.y, 0.0, 0.0);
     annotate.loc = coord;
+    // The host app may supply its own layer for callouts (same area as
+    // wrapView), so it can keep some of its chrome below them.
+    UIView *calloutHost = self.annotationContainerView ?: wrapView;
     if (!alreadyHere)
     {
         annotate.calloutView.delegate = self;
         [annotations addObject:annotate];
-        [annotate.calloutView presentCalloutFromRect:rect inView:wrapView constrainedToView:wrapView animated:YES];
+        [annotate.calloutView presentCalloutFromRect:rect inView:calloutHost constrainedToView:calloutHost animated:YES];
     } else {
         annotate.calloutView.delegate = nil;
-        [annotate.calloutView presentCalloutFromRect:rect inView:wrapView constrainedToView:wrapView animated:NO];
+        [annotate.calloutView presentCalloutFromRect:rect inView:calloutHost constrainedToView:calloutHost animated:NO];
     }
     
     // But then we move it back because we're controlling its positioning
