@@ -912,7 +912,10 @@ static const float PerfOutputDelay = 15.0;
 #if !MAPLY_MINIMAL
 - (void)addAnnotation:(MaplyAnnotation *)annotate forPoint:(MaplyCoordinate)coord offset:(CGPoint)offset
 {
-    [self addAnnotation:annotate forPoint:coord offset:offset arrowDirection:SMCalloutArrowDirectionDown];
+    // Any: point down (sit above the point) by preference, but flip to point
+    // up and sit below it when there isn't room above (SMCalloutView decides).
+    // Was Down only, which squeezed callouts against the top of the screen.
+    [self addAnnotation:annotate forPoint:coord offset:offset arrowDirection:SMCalloutArrowDirectionAny];
 }
 
 - (void)addAnnotation:(MaplyAnnotation *)annotate forPoint:(MaplyCoordinate)coord offset:(CGPoint)offset arrowDirection:(NSInteger)arrowDirection
@@ -945,6 +948,10 @@ static const float PerfOutputDelay = 15.0;
     } else {
         annotate.calloutView.delegate = nil;
         [annotate.calloutView presentCalloutFromRect:rect inView:calloutHost constrainedToView:calloutHost animated:NO];
+        // Re-attach after the re-present (nil only to skip the reposition-
+        // for-visibility callback during it); otherwise taps on a re-presented
+        // callout stop reaching calloutViewClicked:.
+        annotate.calloutView.delegate = self;
     }
     
     // But then we move it back because we're controlling its positioning
@@ -953,13 +960,12 @@ static const float PerfOutputDelay = 15.0;
 
     ViewPlacementManager *vpManage = viewPlacementModel->getManager();
     if (vpManage) {
-        if (alreadyHere)
-        {
-            vpManage->moveView(GeoCoord(coord.x,coord.y),Point2d(0,0),annotate.calloutView,annotate.minVis,annotate.maxVis);
-        } else
-        {
-            vpManage->addView(GeoCoord(coord.x,coord.y),Point2d(0,0),annotate.calloutView,annotate.minVis,annotate.maxVis);
-        }
+        // Always (re)add: addView re-captures the callout's offset from its NEW
+        // frame. moveView kept the OLD offset, so a re-presented callout that
+        // flipped direction or changed size was placed for its old layout
+        // (Epicenter 2026-11-15: arrow drawn at the top, dot below the box).
+        // addView removes any existing instance first.
+        vpManage->addView(GeoCoord(coord.x,coord.y),Point2d(0,0),annotate.calloutView,annotate.minVis,annotate.maxVis);
     }
     renderControl->sceneRenderer->setTriggerDraw();
 }

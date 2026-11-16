@@ -245,6 +245,14 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
     // ensure we're big enough to fit our graphics!
     preferredWidth = fmaxf(preferredWidth, CALLOUT_MIN_WIDTH);
     
+    // A custom content view has a fixed size: never make the callout narrower
+    // than it, or the content hangs outside the bubble (Epicenter 2026-11-15,
+    // 296 pt popup squeezed into a 286 pt landscape gap). Position is clamped
+    // instead (presentCalloutFromRect:). Title/subtitle callouts can still
+    // shrink by truncating.
+    if (self.contentView)
+        return CGSizeMake(preferredWidth, self.calloutHeight);
+
     // ask to be smaller if we have space, otherwise we'll fit into what we have by truncating the title/subtitle.
     return CGSizeMake(fminf(preferredWidth, size.width), self.calloutHeight);
 }
@@ -319,12 +327,15 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
     // we prefer to sit centered directly above our anchor
     CGFloat calloutX = roundf(anchorX - self.frameWidth / 2);
     
-    // but not if it's going to get too close to the edge of our constraints
-    if (calloutX < constrainedRect.origin.x)
-        calloutX = constrainedRect.origin.x;
-
+    // but not if it's going to get too close to the edge of our constraints.
+    // Right edge first, then left: when the callout is wider than the room,
+    // it keeps clear of the LEADING constraint and overhangs the trailing one
+    // (Epicenter: stays off its side panel, may tuck under the map controls).
     if (calloutX > constrainedRect.origin.x+constrainedRect.size.width-self.frameWidth)
         calloutX = constrainedRect.origin.x+constrainedRect.size.width-self.frameWidth;
+
+    if (calloutX < constrainedRect.origin.x)
+        calloutX = constrainedRect.origin.x;
     
     // what's the farthest to the left and right that we could point to, given our background image constraints?
     CGFloat minPointX = calloutX + self.backgroundView.anchorMargin;
@@ -531,8 +542,12 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
     self.containerView.frame = self.bounds;
     self.backgroundView.frame = self.bounds;
     
-    // if we're pointing up, we'll need to push almost everything down a bit
-    CGFloat dy = self.currentArrowDirection == SMCalloutArrowDirectionUp ? TOP_ANCHOR_MARGIN : 0;
+    // if we're pointing up, we'll need to push almost everything down a bit.
+    // A custom content view is pushed down by the background's actual anchor
+    // height (the arrow's depth), which is what calloutHeight reserves; the
+    // fixed TOP_ANCHOR_MARGIN only matches the default background.
+    CGFloat dy = self.currentArrowDirection == SMCalloutArrowDirectionUp
+        ? (self.contentView ? self.backgroundView.anchorHeight : TOP_ANCHOR_MARGIN) : 0;
     
     self.titleViewOrDefault.frameX = self.innerContentMarginLeft;
     self.titleViewOrDefault.frameY = (self.subtitleView || self.subtitle.length ? TITLE_SUB_TOP : TITLE_TOP) + dy;
