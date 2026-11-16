@@ -133,6 +133,11 @@ extern NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView;
  */
 - (void)dismissCalloutAnimated:(BOOL)animated;
 
+/// Re-measure and re-place a callout that is already on screen in `view`,
+/// without removing, hiding or re-animating it (no flash). Falls back to a
+/// non-animated present if it isn't currently shown in `view`.
+- (void)relayoutCalloutFromRect:(CGRect)rect inView:(UIView *)view constrainedToView:(UIView *)constrainedView;
+
 /// For subclassers. You can override this method to provide your own custom animation for presenting/dismissing the callout.
 - (CAAnimation * __nullable)animationWithType:(SMCalloutAnimation)type presenting:(BOOL)presenting;
 

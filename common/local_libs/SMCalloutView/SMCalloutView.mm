@@ -274,13 +274,37 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
 }
 
 // this private method handles both CALayer and UIView parents depending on what's passed.
+// Epicenter 2026-11-16: set only for the duration of an in-place relayout.
+static BOOL SMCalloutRelayoutInPlace = NO;
+
+- (void)relayoutCalloutFromRect:(CGRect)rect inView:(UIView *)view constrainedToView:(UIView *)constrainedView {
+    // Only in place if it is fully presented in this view; mid-present or
+    // mid-dismiss (or elsewhere) take the normal path.
+    BOOL shown = (self.superview == view) && ![self.layer animationForKey:@"dismiss"] && !self.hidden;
+    if (!shown) {
+        [self presentCalloutFromRect:rect inView:view constrainedToView:constrainedView animated:NO];
+        return;
+    }
+    SMCalloutRelayoutInPlace = YES;
+    [CATransaction begin];
+    [CATransaction setDisableActions:YES];
+    [self presentCalloutFromRect:rect inLayer:view.layer ofView:view constrainedToLayer:constrainedView.layer animated:NO];
+    [CATransaction commit];
+    SMCalloutRelayoutInPlace = NO;
+}
+
 - (void)presentCalloutFromRect:(CGRect)rect inLayer:(CALayer *)layer ofView:(UIView *)view constrainedToLayer:(CALayer *)constrainedLayer animated:(BOOL)animated {
 
+    const BOOL inPlace = SMCalloutRelayoutInPlace;
+
     // Sanity check: dismiss this callout immediately if it's displayed somewhere
-    if (self.layer.superlayer) [self dismissCalloutAnimated:NO];
+    // (not for an in-place relayout: removing it, even for one runloop turn,
+    // flashed the globe through the bubble).
+    if (!inPlace && self.layer.superlayer) [self dismissCalloutAnimated:NO];
     
-    // cancel all animations that may be in progress
-    [self.layer removeAnimationForKey:@"present"];
+    // cancel all animations that may be in progress (an in-place relayout keeps
+    // the finished present animation; its fill values equal the model values)
+    if (!inPlace) [self.layer removeAnimationForKey:@"present"];
     [self.layer removeAnimationForKey:@"dismiss"];
 
     // figure out the constrained view's rect in our popup view's coordinate system
@@ -291,8 +315,9 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
     
     constrainedRect = CGRectInset(constrainedRect, COMFORTABLE_MARGIN, COMFORTABLE_MARGIN);
     
-    // form our subviews based on our content set so far
-    [self rebuildSubviews];
+    // form our subviews based on our content set so far (in place: they are
+    // already there; re-adding a SwiftUI host would detach it from the window)
+    if (!inPlace) [self rebuildSubviews];
     
     // apply title/subtitle (if present
     self.titleLabel.text = self.title;
@@ -347,7 +372,9 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
     if (anchorX > maxPointX) adjustX = anchorX - maxPointX;
     
     // add the callout to the given layer (or view if possible, to receive touch events)
-    if (view)
+    if (inPlace) {
+        // already a subview of `view`
+    } else if (view)
         [view addSubview:self];
     else
         [layer addSublayer:self.layer];
@@ -404,6 +431,9 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
 
     // now we want to mask our contents to our background view (if requested) to match the iOS 7 style
     self.containerView.layer.mask = self.backgroundView.contentMask;
+
+    // In place: stay visible, no present animation (nothing to re-run).
+    if (inPlace) return;
 
     // if we need to delay, we don't want to be visible while we're delaying, so hide us in preparation for our popup
     self.hidden = YES;
@@ -530,7 +560,11 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
         // CAAnimation is KVC compliant, so we can store whether we're presenting for lookup in our delegate methods
         [animation setValue:@(presenting) forKey:@"presenting"];
         
-        animation.fillMode = kCAFillModeForwards;
+        // Present: fill BACKWARDS too, so until the animation actually starts
+        // the callout holds its start values (transparent). With forwards only,
+        // anything un-hiding it early (WhirlyGlobe's view placement does) drew
+        // it at full size for a frame, then it vanished and bounced in.
+        animation.fillMode = presenting ? kCAFillModeBoth : kCAFillModeForwards;
         animation.removedOnCompletion = NO;
     }
     

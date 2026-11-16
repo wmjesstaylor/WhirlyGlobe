@@ -947,7 +947,9 @@ static const float PerfOutputDelay = 15.0;
         [annotate.calloutView presentCalloutFromRect:rect inView:calloutHost constrainedToView:calloutHost animated:YES];
     } else {
         annotate.calloutView.delegate = nil;
-        [annotate.calloutView presentCalloutFromRect:rect inView:calloutHost constrainedToView:calloutHost animated:NO];
+        // In place: no remove / hide / re-animate, which flashed the globe
+        // through the bubble each time the host re-fitted it (Epicenter 2026-11-16).
+        [annotate.calloutView relayoutCalloutFromRect:rect inView:calloutHost constrainedToView:calloutHost];
         // Re-attach after the re-present (nil only to skip the reposition-
         // for-visibility callback during it); otherwise taps on a re-presented
         // callout stop reaching calloutViewClicked:.
@@ -966,6 +968,14 @@ static const float PerfOutputDelay = 15.0;
         // (Epicenter 2026-11-15: arrow drawn at the top, dot below the box).
         // addView removes any existing instance first.
         vpManage->addView(GeoCoord(coord.x,coord.y),Point2d(0,0),annotate.calloutView,annotate.minVis,annotate.maxVis);
+    }
+    // A visible callout must not sit at the relative frame (near the top-left)
+    // until the next placement pass: put it back where placement will put it.
+    if (alreadyHere) {
+        [CATransaction begin];
+        [CATransaction setDisableActions:YES];
+        annotate.calloutView.frame = frame;
+        [CATransaction commit];
     }
     renderControl->sceneRenderer->setTriggerDraw();
 }
