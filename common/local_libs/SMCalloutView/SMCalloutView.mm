@@ -35,6 +35,10 @@ NSTimeInterval const kSMCalloutViewRepositionDelayForUIScrollView = 1.0/3.0;
 @property (nonatomic, strong) UILabel *titleLabel, *subtitleLabel;
 @property (nonatomic, assign) SMCalloutArrowDirection currentArrowDirection;
 @property (nonatomic, assign) BOOL popupCancelled;
+// Epicenter: identifies the dismiss in flight. Bumped by every present and every
+// dismiss, so only the LATEST dismiss animation may remove the view, and a
+// present that cancels a dismiss can never be torn down by its late callback.
+@property (nonatomic, assign) NSUInteger dismissGeneration;
 @end
 
 @implementation SMCalloutView
@@ -420,6 +424,8 @@ static BOOL SMCalloutRelayoutInPlace = NO;
     
     NSTimeInterval delay = 0;
     self.popupCancelled = NO; // reset this before calling our delegate below
+    self.dismissGeneration += 1;        // Epicenter: a pending dismiss no longer owns this view
+    self.userInteractionEnabled = YES;  // Epicenter: re-armed (dismiss turns it off)
     
     id<SMCalloutViewDelegate> dg = self.delegate;
     if ([dg respondsToSelector:@selector(calloutView:delayForRepositionWithSize:)] && !CGSizeEqualToSize(offset, CGSizeZero))
@@ -476,7 +482,15 @@ static BOOL SMCalloutRelayoutInPlace = NO;
         if ([dg respondsToSelector:@selector(calloutViewDidAppear:)])
             [dg calloutViewDidAppear:(id)self];
     }
-    else if (!presenting && finished) {
+    else if (!presenting &&
+             (finished ||
+              // Epicenter (2026-11-20): an INTERRUPTED dismiss (app backgrounding
+              // or waking mid-fade) used to leave the callout in the hierarchy
+              // forever: invisible (the fade fills forwards at opacity 0) but still
+              // hit-testable, an orphan dead zone that swallowed taps and pans.
+              // Finish the removal anyway, unless a newer present/dismiss owns it.
+              (self.popupCancelled &&
+               [[anim valueForKey:@"dismissGeneration"] unsignedIntegerValue] == self.dismissGeneration))) {
         
         [self removeFromParent];
         [self.layer removeAnimationForKey:@"dismiss"];
@@ -493,10 +507,21 @@ static BOOL SMCalloutRelayoutInPlace = NO;
     [self.layer removeAnimationForKey:@"dismiss"];
     
     self.popupCancelled = YES;
+    self.dismissGeneration += 1;
+    // Epicenter: a callout being dismissed never takes touches, so even one that
+    // somehow outlives its dismissal can't block the globe underneath it.
+    self.userInteractionEnabled = NO;
+    // Epicenter: no fade unless the scene is foreground-active. Fades started
+    // while backgrounding / waking from a notification are cut short and never
+    // finish; remove straight away instead.
+    UIWindowScene *scene = self.window.windowScene;
+    if (animated && scene != nil && scene.activationState != UISceneActivationStateForegroundActive)
+        animated = NO;
     
     if (animated) {
         CAAnimation *animation = [self animationWithType:self.dismissAnimation presenting:NO];
         animation.delegate = self;
+        [animation setValue:@(self.dismissGeneration) forKey:@"dismissGeneration"];
         [self.layer addAnimation:animation forKey:@"dismiss"];
     }
     else {
